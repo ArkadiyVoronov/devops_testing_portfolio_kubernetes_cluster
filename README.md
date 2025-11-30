@@ -41,3 +41,15 @@ Automate the deployment of a functional Kubernetes cluster (e.g., on AWS, GCP, o
 > 🔐 **Security note**: Always restrict secrets and never expose kubeconfig publicly.
 
 ---
+
+## 🚀 What This Project Demonstrates
+
+This repository automates the **provisioning of a single-node Kubernetes cluster (K3s)** directly inside a GitHub Actions runner.
+
+- ✅ Fully automated via GitHub Actions
+- ✅ Installs K3s and configures `kubectl`
+- ✅ Runs a **1-minute health-check loop** to simulate monitoring
+- ✅ Exposes cluster state via workflow logs and artifacts
+- ⚠️ **For demo/learning only** — cluster is destroyed after workflow ends
+
+Ideal for showcasing **infrastructure automation**, **Kubernetes basics**, and **observability patterns** in CI/CD pipelines.
