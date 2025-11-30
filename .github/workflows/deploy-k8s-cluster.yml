@@ -58,7 +58,7 @@ jobs:
 
       # --- Загружаем kubeconfig безопасно ---
       - name: Fetch kubeconfig from remote instance
-        uses: appleboy/scp-action@v1.0.4
+        uses: appleboy/scp-action@v1.0.1
         with:
           host: ${{ env.INSTANCE_IP }}
           username: ubuntu
