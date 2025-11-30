@@ -53,3 +53,30 @@ This repository automates the **provisioning of a single-node Kubernetes cluster
 - ⚠️ **For demo/learning only** — cluster is destroyed after workflow ends
 
 Ideal for showcasing **infrastructure automation**, **Kubernetes basics**, and **observability patterns** in CI/CD pipelines.
+
+## 🚀 Kubernetes Deployment & Monitoring Demo
+
+This repository demonstrates a fully automated **single-node Kubernetes (K3s) cluster deployment** inside a GitHub Actions runner, followed by a **1-minute synthetic health check loop**.
+
+### ✨ Features
+- ✅ Installs K3s and configures `kubectl` in under 20 seconds
+- ✅ Deploys a test `nginx` application
+- ✅ Runs **6 health checks over 1 minute** (every 10s):
+  - Node and pod status via `kubectl`
+  - HTTP connectivity test via `curl` to the nginx service
+- ✅ **Sends deployment status to Telegram** (success/failure)
+- ✅ Exports encrypted `kubeconfig` as a workflow artifact (for audit/demo)
+
+> ⚠️ **Note**: The cluster runs inside the ephemeral GitHub Actions runner and is **destroyed after the workflow ends**. This is intended for **demonstration, testing, and DevOps portfolio purposes only** — not for production workloads.
+
+### 🔔 Telegram Notifications
+Upon completion, the workflow sends a message to your Telegram channel or chat with:
+- Workflow status (✅ Success / ❌ Failure)
+- Commit hash and branch
+- Duration and link to the run
+
+To enable this, add your Telegram bot token and chat ID as secrets (see [Setup](#setup)).
+
+### 📂 Artifacts
+After each run, you can download:
+- `local-kubeconfig.gpg` — encrypted Kubernetes config (decrypt with your passphrase)
