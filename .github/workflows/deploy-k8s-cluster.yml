@@ -1,83 +1,55 @@
-name: Deploy Kubernetes Cluster
+name: Deploy Local K3s Cluster (for Demo)
 
 on:
-  workflow_dispatch:  # Запуск вручную через UI
+  workflow_dispatch:
   push:
     branches: [main]
 
-# Используем Environment для защиты секретов и артефактов
-env:
-  CLUSTER_NAME: k3s-test-cluster
-  TF_VAR_cluster_name: k3s-test-cluster
-
 jobs:
-  provision-and-deploy:
+  deploy-k3s:
     runs-on: ubuntu-latest
-    environment: production  # ← Обязательно создайте Environment в Settings!
-    
+    environment: demo  # опционально, для секретов
+
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
-
-      - name: Terraform Init
-        run: terraform init terraform/
-
-      - name: Terraform Apply
+      - name: Install K3s
         run: |
-          terraform apply -auto-approve \
-            -var="cluster_name=${{ env.CLUSTER_NAME }}" \
-            terraform/
+          curl -sfL https://get.k3s.io | sh -
+          sudo chmod 644 /etc/rancher/k3s/k3s.yaml
 
-      - name: Get Instance Public IP
-        id: get_ip
+      - name: Save kubeconfig
         run: |
-          IP=$(terraform output -raw instance_public_ip)
-          echo "INSTANCE_IP=$IP" >> $GITHUB_ENV
+          mkdir -p $HOME/.kube
+          sudo cat /etc/rancher/k3s/k3s.yaml > $HOME/.kube/config
+          # Исправляем server address на localhost
+          sed -i 's/127.0.0.1/localhost/g' $HOME/.kube/config
 
-      # --- Установка K3s на удалённой машине через SSH ---
-      - name: Install K3s on remote instance
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ env.INSTANCE_IP }}
-          username: ubuntu
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            curl -sfL https://get.k3s.io | sh -
-            sudo cat /etc/rancher/k3s/k3s.yaml > ~/kubeconfig
-            echo "K3s installed successfully"
-
-      # --- Загружаем kubeconfig безопасно ---
-      - name: Fetch kubeconfig from remote instance
-        uses: appleboy/scp-action@v1.0.0
-        with:
-          host: ${{ env.INSTANCE_IP }}
-          username: ubuntu
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "~/kubeconfig"
-          target: "local-kubeconfig"
-
-      - name: Sanitize and encrypt kubeconfig
+      - name: Install kubectl
         run: |
-          # Подставляем правильный IP сервера
-          sed -i "s/127.0.0.1/${{ env.INSTANCE_IP }}/g" local-kubeconfig
-          # Шифруем с помощью gpg (опционально, но рекомендуется)
-          gpg --symmetric --cipher-algo AES256 --batch --passphrase="$KUBECONFIG_PASS" local-kubeconfig
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/
+
+      - name: Verify cluster
+        run: kubectl get nodes
+
+      - name: Deploy test app (optional)
+        run: |
+          kubectl create deployment nginx --image=nginx
+          kubectl expose deployment nginx --port=80 --type=ClusterIP
+          kubectl get pods,svc
+
+      - name: Save kubeconfig as encrypted artifact (для проверки)
+        run: |
+          gpg --symmetric --cipher-algo AES256 --batch --passphrase="$KUBE_PASS" $HOME/.kube/config
         env:
-          KUBECONFIG_PASS: ${{ secrets.KUBECONFIG_PASSPHRASE }}
+          KUBE_PASS: ${{ secrets.KUBECONFIG_PASSPHRASE }}
 
-      - name: Upload encrypted kubeconfig as artifact (only in protected environment)
+      - name: Upload encrypted kubeconfig
         uses: actions/upload-artifact@v4
         with:
-          name: kubeconfig.encrypted
-          path: local-kubeconfig.gpg
-          retention-days: 1  # Минимальный срок — только для отладки!
+          name: local-kubeconfig.gpg
+          path: /home/runner/.kube/config.gpg
+          retention-days: 1
