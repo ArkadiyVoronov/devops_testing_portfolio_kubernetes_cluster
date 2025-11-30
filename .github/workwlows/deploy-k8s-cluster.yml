@@ -1,0 +1,83 @@
+name: Deploy Kubernetes Cluster
+
+on:
+  workflow_dispatch:  # Запуск вручную через UI
+  push:
+    branches: [main]
+
+# Используем Environment для защиты секретов и артефактов
+env:
+  CLUSTER_NAME: k3s-test-cluster
+  TF_VAR_cluster_name: ${{ env.CLUSTER_NAME }}
+
+jobs:
+  provision-and-deploy:
+    runs-on: ubuntu-latest
+    environment: production  # ← Обязательно создайте Environment в Settings!
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Terraform Init
+        run: terraform init terraform/
+
+      - name: Terraform Apply
+        run: |
+          terraform apply -auto-approve \
+            -var="cluster_name=${{ env.CLUSTER_NAME }}" \
+            terraform/
+
+      - name: Get Instance Public IP
+        id: get_ip
+        run: |
+          IP=$(terraform output -raw instance_public_ip)
+          echo "INSTANCE_IP=$IP" >> $GITHUB_ENV
+
+      # --- Установка K3s на удалённой машине через SSH ---
+      - name: Install K3s on remote instance
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ env.INSTANCE_IP }}
+          username: ubuntu
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            curl -sfL https://get.k3s.io | sh -
+            sudo cat /etc/rancher/k3s/k3s.yaml > ~/kubeconfig
+            echo "K3s installed successfully"
+
+      # --- Загружаем kubeconfig безопасно ---
+      - name: Fetch kubeconfig from remote instance
+        uses: appleboy/scp-action@v1.0.2
+        with:
+          host: ${{ env.INSTANCE_IP }}
+          username: ubuntu
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "~/kubeconfig"
+          target: "local-kubeconfig"
+
+      - name: Sanitize and encrypt kubeconfig
+        run: |
+          # Подставляем правильный IP сервера
+          sed -i "s/127.0.0.1/${{ env.INSTANCE_IP }}/g" local-kubeconfig
+          # Шифруем с помощью gpg (опционально, но рекомендуется)
+          gpg --symmetric --cipher-algo AES256 --batch --passphrase="$KUBECONFIG_PASS" local-kubeconfig
+        env:
+          KUBECONFIG_PASS: ${{ secrets.KUBECONFIG_PASSPHRASE }}
+
+      - name: Upload encrypted kubeconfig as artifact (only in protected environment)
+        uses: actions/upload-artifact@v4
+        with:
+          name: kubeconfig.encrypted
+          path: local-kubeconfig.gpg
+          retention-days: 1  # Минимальный срок — только для отладки!
