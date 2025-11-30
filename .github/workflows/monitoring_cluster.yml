@@ -1,4 +1,4 @@
-name: Deploy and Monitor K3s Cluster
+name: Monitor K3s Cluster
 
 on:
   workflow_dispatch:
