@@ -26,7 +26,7 @@ Upon completion, the workflow sends a message to your Telegram channel or chat w
 
 ### 📸 Example Notification
 
-![Telegram notification example](image/devops_example.png)
+![Telegram notification example](images/devops_example.png)
 
 > *Screenshot of actual notification received in Telegram*
 
