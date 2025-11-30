@@ -1,0 +1,29 @@
+      - name: Send success notification to Telegram
+        if: success()
+        uses: appleboy/telegram-action@v1
+        with:
+          to: ${{ secrets.TG_CHAT_ID }}
+          token: ${{ secrets.TG_BOT_TOKEN }}
+          message: |
+            ✅ *K3s Deployment SUCCESS*
+            Repository: ${{ github.repository }}
+            Branch: ${{ github.ref_name }}
+            Commit: ${{ github.sha }}
+            Duration: ~20s
+            Workflow: ${{ github.workflow }}
+            Run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            Artifact: kubeconfig available for 1 day
+
+      - name: Send failure notification to Telegram
+        if: failure()
+        uses: appleboy/telegram-action@v1
+        with:
+          to: ${{ secrets.TG_CHAT_ID }}
+          token: ${{ secrets.TG_BOT_TOKEN }}
+          message: |
+            ❌ *K3s Deployment FAILED*
+            Repository: ${{ github.repository }}
+            Branch: ${{ github.ref_name }}
+            Commit: ${{ github.sha }}
+            Workflow: ${{ github.workflow }}
+            Run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
