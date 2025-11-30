@@ -22,13 +22,6 @@ Automate the deployment of a functional Kubernetes cluster (e.g., on AWS, GCP, o
 
 > 💡 Designed for learning, testing, and showcasing DevOps automation skills — **not for production use** without hardening.
 
-## 📂 Structure
-.
-├── .github/workflows/      # GitHub Actions definitions
-├── terraform/              # IaC for cloud resources
-├── k8s/                    # Kubernetes manifests
-├── scripts/                # Bootstrap and helper scripts
-└── README.md
 
 
 ## ▶️ Getting Started
