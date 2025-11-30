@@ -8,7 +8,7 @@ on:
 # Используем Environment для защиты секретов и артефактов
 env:
   CLUSTER_NAME: k3s-test-cluster
-  TF_VAR_cluster_name: ${{ env.CLUSTER_NAME }}
+  TF_VAR_cluster_name: k3s-test-cluster
 
 jobs:
   provision-and-deploy:
